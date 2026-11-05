@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1769e8"><title>GTraffic Link Assistant</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f1f5fb;color:#14213a;font:16px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}main{max-width:560px;margin:5vh auto;padding:18px}section{background:#fff;border:1px solid #dbe3ef;border-radius:22px;padding:24px;box-shadow:0 12px 35px #14213a12}.logo{text-align:center;color:#1769e8;font-size:34px;font-weight:850;letter-spacing:-1.4px}.sub{text-align:center;color:#64748b;margin:5px 0 28px}h2{font-size:19px;margin:22px 0 10px}p{line-height:1.55}input{width:100%;padding:15px;border:1px solid #cbd5e1;border-radius:12px;font-size:16px;outline-color:#1769e8}button,.btn{display:block;width:100%;padding:15px;margin-top:12px;border:0;border-radius:12px;background:#1769e8;color:#fff;text-align:center;text-decoration:none;font-size:16px;font-weight:700;cursor:pointer}.secondary{background:#101a30}.muted{background:#f1f5f9;color:#14213a;padding:14px;border-radius:12px;margin-top:15px;overflow-wrap:anywhere}#result{display:none;margin-top:14px;padding:14px;border-radius:12px;background:#eef4ff;overflow-wrap:anywhere}a{color:#1769e8;overflow-wrap:anywhere}.small{font-size:13px;color:#64748b;line-height:1.55}.step{padding:14px 0;border-top:1px solid #e2e8f0}
+</style></head>
+<body><main><section>
+<div class="logo">GTraffic.io</div><p class="sub">Link Assistant · iPhone / Safari</p>
+<div class="muted"><b>Cách dùng:</b> Mở link GTraffic bằng Safari, tự hoàn tất các bước xác minh/CAPTCHA nếu trang yêu cầu, rồi quay lại đây để dán URL cuối cùng.</div>
+<h2>1. Link GTraffic</h2><input id="url" type="url" placeholder="https://gtraffic.io/..." autocapitalize="off" spellcheck="false">
+<a class="btn" id="open" href="https://gtraffic.io/" target="_blank" rel="noopener">Mở link GTraffic trong Safari ↗</a>
+<button class="secondary" id="check">Kiểm tra chuyển hướng HTTP</button>
+<div id="result" role="status"></div>
+<div class="step"><h2>2. Sau khi tự xác minh</h2><p class="small">Nếu GTraffic chuyển sang trang đích, sao chép địa chỉ trên thanh Safari rồi dán vào ô dưới. Không nhập mật khẩu, OTP hoặc mã riêng tư.</p><input id="final" type="url" placeholder="Dán URL sau khi hoàn tất xác minh" autocapitalize="off" spellcheck="false"><button id="show">Kiểm tra URL đã nhận</button><div id="finalResult" class="muted" hidden></div></div>
+<p class="small">Công cụ này không tự giải CAPTCHA, không lấy mã xác minh và không né cơ chế chống bot. CAPTCHA phải được người dùng hoàn tất trực tiếp trên trang GTraffic.</p>
+</section></main>
+<script>
+const $=s=>document.querySelector(s), box=$('#result'), input=$('#url');
+$('#open').addEventListener('click',e=>{const v=input.value.trim();if(v){try{const u=new URL(v);if(u.protocol!=='https:'||u.hostname!=='gtraffic.io'){e.preventDefault();alert('Chỉ chấp nhận link https://gtraffic.io/');return}e.currentTarget.href=u.href}catch{e.preventDefault();alert('Link không hợp lệ');return}}});
+$('#check').onclick=async()=>{const url=input.value.trim();box.style.display='block';box.textContent='Đang kiểm tra…';try{const r=await fetch('/resolve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})});const d=await r.json();box.replaceChildren();if(d.destination){box.append('Tìm thấy chuyển hướng HTTP: ');const a=document.createElement('a');a.href=d.destination;a.textContent=d.destination;a.target='_blank';a.rel='noopener';box.append(a);const p=document.createElement('p');p.textContent=d.note;box.append(p)}else box.textContent=d.error||d.note||'Không xử lý được link.'}catch{box.textContent='Không kết nối được máy chủ. Hãy thử tải lại trang.'}};
+$('#show').onclick=()=>{const out=$('#finalResult');try{const u=new URL($('#final').value.trim());if(!['http:','https:'].includes(u.protocol))throw 0;out.hidden=false;out.replaceChildren();const p=document.createElement('p');p.textContent='URL bạn đã sao chép:';const a=document.createElement('a');a.href=u.href;a.textContent=u.href;a.target='_blank';a.rel='noopener';const b=document.createElement('button');b.textContent='Sao chép URL';b.onclick=async()=>{try{await navigator.clipboard.writeText(u.href);b.textContent='Đã sao chép'}catch{b.textContent='Hãy sao chép thủ công từ đường dẫn'}};out.append(p,a,b)}catch{alert('Vui lòng dán một URL http hoặc https hợp lệ.')}};
+</script></body></html>
