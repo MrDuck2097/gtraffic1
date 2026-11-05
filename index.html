@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#1769e8">
+<title>GTraffic Link Checker</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f6fb;color:#14213a;font:16px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:520px;margin:9vh auto;padding:22px}section{background:white;border:1px solid #dbe3ef;border-radius:22px;padding:25px;box-shadow:0 12px 35px #14213a12}
+.logo{font-size:34px;font-weight:800;color:#1769e8;letter-spacing:-1.5px;text-align:center;margin:8px 0 4px}
+.sub{text-align:center;color:#64748b;margin:0 0 28px}
+label{font-weight:700;display:block;margin-bottom:9px}
+input{width:100%;padding:16px;border:1px solid #cbd5e1;border-radius:12px;font-size:16px;outline-color:#1769e8}
+button{width:100%;padding:16px;margin-top:14px;background:#1769e8;color:white;border:0;border-radius:12px;font-size:17px;font-weight:700}
+button:disabled{opacity:.5}#result{margin-top:18px;padding:15px;border-radius:12px;background:#f1f5f9;overflow-wrap:anywhere;display:none}
+a{color:#1769e8;word-break:break-all}.small{font-size:13px;color:#64748b;line-height:1.5;margin-top:18px}
+</style>
+</head>
+<body><main><section>
+<div class="logo">Gtraffic.io</div><p class="sub">Link checker · iPhone / Safari</p>
+<label for="url">Dán link GTraffic</label>
+<input id="url" type="url" placeholder="https://gtraffic.io/..." autocapitalize="off" spellcheck="false">
+<button id="go">Kiểm tra link</button>
+<div id="result" role="status"></div>
+<p class="small">Công cụ chỉ kiểm tra chuyển hướng HTTP thông thường. Không tự giải CAPTCHA, lấy mã xác minh hoặc bỏ qua cơ chế chống bot. Cần triển khai máy chủ đi kèm để sử dụng.</p>
+</section></main>
+<script>
+const btn=document.querySelector('#go'), box=document.querySelector('#result'), input=document.querySelector('#url');
+btn.onclick=async()=>{
+ const url=input.value.trim(); box.style.display='block'; box.textContent='Đang kiểm tra…'; btn.disabled=true;
+ try{
+  const r=await fetch('/resolve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})});
+  const d=await r.json(); box.replaceChildren();
+  if(d.destination){
+   box.append('Tìm thấy chuyển hướng: ');
+   const a=document.createElement('a');a.href=d.destination;a.textContent=d.destination;a.target='_blank';a.rel='noopener';box.append(a);
+   const p=document.createElement('p');p.textContent=d.note;box.append(p);
+  }else{box.textContent=d.error||d.note||'Không xử lý được link.';}
+ }catch(e){box.textContent='Chưa kết nối được máy chủ. Hãy triển khai backend trước.';}
+ finally{btn.disabled=false;}
+};
+</script></body></html>
