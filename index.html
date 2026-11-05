@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GTraffic Link Tool V4</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}
+body{margin:0;background:#0b1020;color:#eef2ff;font:16px system-ui,-apple-system,sans-serif}
+main{max-width:720px;margin:34px auto;padding:20px}
+.panel{background:#151d33;border:1px solid #293653;border-radius:18px;padding:20px;margin:14px 0}
+h1{font-size:27px;margin:0 0 8px}.muted{color:#aab6d0;line-height:1.5}
+input,textarea,button{width:100%;border-radius:12px;padding:13px;font:inherit}
+input,textarea{background:#0c1428;border:1px solid #3a4969;color:#fff;margin:8px 0}
+button{border:0;background:#6d8cff;color:#071126;font-weight:750;margin-top:8px}
+button.secondary{background:#273653;color:#eef2ff}
+.result{overflow-wrap:anywhere;background:#0b1428;padding:12px;border-radius:10px;margin-top:10px}
+a{color:#9db4ff;overflow-wrap:anywhere}.small{font-size:13px}
+ol{padding-left:22px;overflow-wrap:anywhere}li{margin:7px 0}
+.hidden{display:none}.ok{color:#86efac}.warn{color:#fcd34d}
+</style>
+</head>
+<body>
+<main>
+  <h1>GTraffic Link Tool <span class="small">V4</span></h1>
+  <p class="muted">Đọc redirect HTTP thông thường và hỗ trợ lấy URL hiện tại từ Safari sau khi bạn tự hoàn tất CAPTCHA.</p>
+
+  <section class="panel">
+    <h3>1. Kiểm tra redirect tự động</h3>
+    <input id="shortUrl" placeholder="Dán link https://gtraffic.io/..." autocapitalize="off">
+    <button id="resolveBtn">Kiểm tra redirect</button>
+    <div id="resolveResult" class="muted"></div>
+    <button id="openBtn" class="secondary">Mở link trong Safari</button>
+  </section>
+
+  <section class="panel">
+    <h3>2. Tạo nút chụp URL cho Safari</h3>
+    <p class="muted">Dán địa chỉ Render của ứng dụng đã triển khai. Công cụ sẽ tạo bookmarklet. Sau khi mở link GTraffic trong Safari và tự hoàn tất CAPTCHA, chạy bookmarklet để gửi URL đang mở về ứng dụng.</p>
+    <input id="appUrl" placeholder="https://ten-app.onrender.com" autocapitalize="off">
+    <button id="makeBookmarklet">Tạo bookmarklet</button>
+    <textarea id="bookmarklet" rows="4" readonly placeholder="Bookmarklet sẽ xuất hiện ở đây"></textarea>
+    <button id="copyBookmarklet" class="secondary">Sao chép bookmarklet</button>
+    <p class="small muted">Cách lưu trên iPhone: Safari → Chia sẻ → Thêm dấu trang. Sau đó mở Dấu trang → Sửa dấu trang vừa tạo → thay toàn bộ địa chỉ bằng đoạn bookmarklet đã sao chép. Khi cần dùng, mở trang GTraffic rồi chạy dấu trang đó.</p>
+  </section>
+
+  <section class="panel" id="capturePanel">
+    <h3>3. URL đã nhận từ Safari</h3>
+    <div id="captured" class="result muted">Chưa có URL nào được gửi.</div>
+    <button id="copyCaptured" class="secondary">Sao chép URL nhận được</button>
+    <a id="openCaptured" class="hidden" target="_blank" rel="noopener">Mở URL</a>
+  </section>
+  <p class="small muted">Giới hạn: V4 không phá CAPTCHA, không tự điền mã xác minh và không né cơ chế chống bot. Nếu GTraffic không đổi địa chỉ trang khi hoàn tất hoặc URL đích nằm trong trạng thái JavaScript nội bộ, bookmarklet chỉ lấy được URL đang hiển thị trên thanh địa chỉ Safari.</p>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+let capturedUrl = "";
+function showCaptured(value){
+  try{
+    const u = new URL(value);
+    if(!["http:","https:"].includes(u.protocol)) throw new Error();
+    capturedUrl = u.href;
+    $("captured").textContent = capturedUrl;
+    $("openCaptured").href = capturedUrl;
+    $("openCaptured").textContent = "Mở URL đã nhận";
+    $("openCaptured").classList.remove("hidden");
+  }catch(e){
+    $("captured").textContent = "URL nhận được không hợp lệ.";
+  }
+}
+const params = new URLSearchParams(location.search);
+if(params.has("capture")) showCaptured(params.get("capture"));
+
+$("resolveBtn").onclick = async () => {
+  const url = $("shortUrl").value.trim();
+  $("resolveResult").textContent = "Đang kiểm tra…";
+  try{
+    const r = await fetch("/resolve",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url})});
+    const d = await r.json();
+    if(!d.ok){$("resolveResult").textContent=d.error || "Không kiểm tra được.";return;}
+    $("resolveResult").innerHTML = "";
+    const p = document.createElement("p");
+    p.textContent = "URL hiện tại/đích tìm được: ";
+    const a = document.createElement("a"); a.href=d.current; a.textContent=d.current; a.target="_blank"; a.rel="noopener";
+    p.append(a); $("resolveResult").append(p);
+    const note=document.createElement("p"); note.className="muted"; note.textContent=d.note || ""; $("resolveResult").append(note);
+    const ol=document.createElement("ol");
+    (d.chain||[]).forEach(x=>{const li=document.createElement("li");li.textContent=x;ol.append(li);});
+    $("resolveResult").append(ol);
+  }catch(e){$("resolveResult").textContent="Lỗi kết nối máy chủ.";}
+};
+$("openBtn").onclick = () => {
+  const u=$("shortUrl").value.trim();
+  if(/^https?:\/\/(www\.)?gtraffic\.io\//i.test(u)) location.href=u;
+  else alert("Hãy nhập link gtraffic.io hợp lệ trước.");
+};
+$("makeBookmarklet").onclick = () => {
+  let base=$("appUrl").value.trim().replace(/\/+$/,"");
+  if(!/^https?:\/\/[^ ]+$/i.test(base)){alert("Nhập URL Render hợp lệ.");return;}
+  const code = `javascript:(()=>{const u=location.href;location.href=${JSON.stringify(base + "/?capture=")}+encodeURIComponent(u)})()`;
+  $("bookmarklet").value=code;
+};
+$("copyBookmarklet").onclick = async () => {
+  const v=$("bookmarklet").value;
+  if(!v){alert("Hãy tạo bookmarklet trước.");return;}
+  try{await navigator.clipboard.writeText(v);alert("Đã sao chép.");}
+  catch(e){$("bookmarklet").focus();$("bookmarklet").select();alert("Không tự sao chép được. Hãy nhấn giữ đoạn mã và chọn Sao chép.");}
+};
+$("copyCaptured").onclick = async () => {
+  if(!capturedUrl){alert("Chưa có URL để sao chép.");return;}
+  try{await navigator.clipboard.writeText(capturedUrl);alert("Đã sao chép URL.");}
+  catch(e){alert("Không thể truy cập clipboard trên trình duyệt này.");}
+};
+</script>
+</body>
+</html>
